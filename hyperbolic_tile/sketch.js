@@ -4,13 +4,18 @@ var hexes_this_layer = 0;
 var max_this_layer = 1;
 var side = 0;
 var layer = 0;
-var hex_edge_px = 10;
-var margin_px = 2;
-var tile_px = hex_edge_px*2+margin_px;
-var pallette_slot = 0;
+var hex_edge_px = 6;
+var margin_px = 0;
+var color_add_skip = 0;
+var tile_px = (hex_edge_px*2)+margin_px;
+var pallette_shade_distance = 8;
+var pallette_size = 6;
+var pallette_order_slot = 0;
 var pallette = [];
+var pallette_order = [];
 
 function setup() {
+  colorMode(HSB, 255);
   createCanvas(windowWidth, windowHeight);
   background(0);
   frameRate(240);
@@ -20,14 +25,25 @@ function setup() {
   max_this_layer = 1;
   side = 0;
   layer = 0;
-  hex_edge_px = 10;
-  margin_px = 2;
+  color_add_skip = random_int(-2,8);
+  hex_edge_px = random_int(0,int(windowHeight/256))+3;
+  margin_px = -1;
   tile_px = hex_edge_px*2+margin_px;
-  pallette_slot = 0;
+  initialize_pallette();
+}
+
+function initialize_pallette() {
+  pallette_order_slot = 0;
   pallette = [];
-  add_color();
-  add_color();
-  add_color();
+  pallette_order = [1,4,7];
+  var prime_hue = random_int(0,256);
+  for (var i = 0; i < 3; i++) {
+    prime_hue = (prime_hue + pallette_shade_distance*3) % 256
+    var sat = random_int(128,256);
+    pallette.push(color((prime_hue+pallette_shade_distance)%256, sat, 255));
+    pallette.push(color(prime_hue, sat, 255));
+    pallette.push(color((prime_hue-pallette_shade_distance)%256, sat, 255));
+  }
 }
 
 function random_int(min, max) {
@@ -37,10 +53,7 @@ function random_int(min, max) {
 }
 
 function add_color() {
-  var r = random_int(0,256);
-  var g = random_int(0,256);
-  var b = random_int(0,256);
-  pallette.push(color(r,g,b));
+  pallette_order.push(random_int(0,pallette.length));
 }
 
 function advance_hex() {
@@ -54,10 +67,17 @@ function advance_hex() {
     hexes_this_layer = 0;
     hexes_this_side = 0;
     max_this_layer = layer * 6;
-    pallette_slot = pallette_slot + 2;
-    if (layer % 3 == 0) {
-      add_color();
+    if (color_add_skip >= 0) {
+      if (layer % (color_add_skip + 1) == 0) {
+        add_color();
+      }
+    } else {
+      for (var i = color_add_skip; i < 0; i++) {
+        // Negative color_add_skip get lots of new colors
+        add_color();
+      }
     }
+    //pallette_order_slot = (3*layer) % pallette_order.length
   } else {
     if (hexes_this_side >= layer) {
       // Turn.
@@ -65,12 +85,12 @@ function advance_hex() {
       hexes_this_side = 0;
     }
   }
-  pallette_slot = (pallette_slot + 1) % pallette.length;
+  pallette_order_slot = (pallette_order_slot + 1) % pallette_order.length;
 }
 
 function hexagon() {
   noStroke();
-  fill(pallette[pallette_slot]);
+  fill(pallette[pallette_order[pallette_order_slot]]);
   beginShape();
   for (var a = 0; a < TWO_PI; a += (TWO_PI/6)) {
     var sx = cos(a) * hex_edge_px;
